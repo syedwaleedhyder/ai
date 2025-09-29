@@ -20,5 +20,28 @@ This repo documents my step-by-step journey of learning and implementing **Flash
 - Gradient of the softmax operation
 - Flash Attention (Backward Pass)
 
+### Introduction to Multi-Head Attention
+Source: [Coding a Transformer from scratch on PyTorch, with full explanation, training and inference.](https://www.youtube.com/watch?v=ISNdQcPhsts)
+
+#### Introduction
+#### Input Embeddings
+#### Positional Encodings
+#### Layer Normalization
+#### Feed Forward
+#### Multi-Head Attention
+#### Residual Connection
+#### Encoder
+#### Decoder
+#### Linear Layer
+#### Transformer
+#### Task overview
+#### Tokenizer
+#### Dataset
+#### Training loop
+#### Validation loop
+#### Attention visualization
+
+
+
 **Inspired by:**
 [Flash Attention from First Principles (YouTube)](https://www.youtube.com/watch?v=zy8ChVd_oTM)

@@ -28,6 +28,22 @@ Source: [Coding a Transformer from scratch on PyTorch, with full explanation, tr
 #### Input Embeddings
 ![input embeddings](resources/input_embedding.png)
 #### Positional Encodings
+![positional_encoding](resources/positional_encoding.png)
+![positional_encoding_2](resources/positional_encoding_2.png)
+
+#### Log Transform in Positional Encoding
+
+- **Math identity:** $ a^b = e^{b \ln(a)} $
+- $ 10000^{\frac{2i}{d_{model}}} = e^{\frac{2i}{d_{model}} \ln(10000)} $
+- Invert for denominator: $ 10000^{-\frac{2i}{d_{model}}} = e^{-\frac{2i}{d_{model}} \ln(10000)} $
+- **Code:**
+
+```python
+div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) / d_model))
+```
+
+- This matches the scaling in the original formula.
+
 #### Layer Normalization
 #### Feed Forward
 #### Multi-Head Attention

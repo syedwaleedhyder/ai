@@ -24,7 +24,9 @@ This repo documents my step-by-step journey of learning and implementing **Flash
 Source: [Coding a Transformer from scratch on PyTorch, with full explanation, training and inference.](https://www.youtube.com/watch?v=ISNdQcPhsts)
 
 #### Introduction
+![transformer_architecture](resources/transformer_architecture.png)
 #### Input Embeddings
+![input embeddings](resources/input_embedding.png)
 #### Positional Encodings
 #### Layer Normalization
 #### Feed Forward

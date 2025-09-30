@@ -73,6 +73,23 @@ class LayerNormalization(nn.Module):
         return self.alpha * (x - mean) / (std + self.eps) + self.bias
 
 
+class FeedForwardBlock(nn.Module):
+    """
+    Position-wise feed-forward network.
+    Formula: FFN(x) = max(0, xW₁ + b₁)W₂ + b₂
+    """
+    def __init__(self, d_model: int, d_ff: int, dropout: float) -> None:
+        super().__init__()
+        self.linear_1 = nn.Linear(d_model, d_ff)  # Expand dimension
+        self.dropout = nn.Dropout(dropout)
+        self.linear_2 = nn.Linear(d_ff, d_model)  # Project back
+    
+    def forward(self, x):
+        # Shape: (batch, seq_len, d_model) → (batch, seq_len, d_ff) 
+        #        → (batch, seq_len, d_model)
+        return self.linear_2(self.dropout(torch.relu(self.linear_1(x))))
+
+
 if __name__ == "__main__":
     # Reproducible results for the test run
     torch.manual_seed(0)
@@ -119,3 +136,11 @@ if __name__ == "__main__":
     print("LayerNorm mean (first batch, first token):", first_mean)
     print("LayerNorm std  (first batch, first token):", first_std)
     print("LayerNorm alpha:", ln.alpha.item(), "bias:", ln.bias.item())
+
+    # FeedForwardBlock test
+    ff = FeedForwardBlock(d_model=d_model, d_ff=64, dropout=0.1)
+    out_ff = ff(out_ln)
+    print("After FeedForwardBlock shape:", out_ff.shape)
+    print("First FF vector (first 5 dims):", out_ff[0, 0, :5].tolist())
+    print("FeedForward mean:", out_ff.mean().item())
+    print("FeedForward std:", out_ff.std().item())

@@ -1,7 +1,8 @@
 import math
 import torch
+import torch.nn as nn
 
-class InputEmbeddings(torch.nn.Module):
+class InputEmbeddings(nn.Module):
     """
     Converts input tokens to embeddings of dimension d_model.
     Embeddings are normalized by multiplying by sqrt(d_model).
@@ -14,13 +15,13 @@ class InputEmbeddings(torch.nn.Module):
         super().__init__()
         self.d_model = d_model  # Dimension of vectors (512)
         self.vocab_size = vocab_size  # Size of the vocabulary
-        self.embedding = torch.nn.Embedding(vocab_size, d_model)
+        self.embedding = nn.Embedding(vocab_size, d_model)
     
     def forward(self, x):
         # Normalizing the variance of the embeddings
         return self.embedding(x) * math.sqrt(self.d_model)
 
-class PositionalEncoding(torch.nn.Module):
+class PositionalEncoding(nn.Module):
     """
     Adds positional information to embeddings using sine/cosine functions.
     This allows the model to understand token positions in the sequence.
@@ -29,7 +30,7 @@ class PositionalEncoding(torch.nn.Module):
         super().__init__()
         self.d_model = d_model
         self.seq_len = seq_len
-        self.dropout = torch.nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout)
         # Create positional encoding matrix (seq_len, d_model)
         pe = torch.zeros(seq_len, d_model)
         # Create position indices [0, 1, 2, ..., seq_len-1]
@@ -52,7 +53,7 @@ class PositionalEncoding(torch.nn.Module):
         x = x + (self.pe[:, :x.shape[1], :]).requires_grad_(False)
         return self.dropout(x)
 
-class LayerNormalization(torch.nn.Module):
+class LayerNormalization(nn.Module):
     """
     Normalizes inputs across features for stable training.
     Uses learnable parameters alpha (scale) and bias (shift).
@@ -60,8 +61,8 @@ class LayerNormalization(torch.nn.Module):
     def __init__(self, eps: float = 1e-6) -> None:
         super().__init__()
         self.eps = eps  # Small value to avoid division by zero
-        self.alpha = torch.nn.Parameter(torch.ones(1))  # Learnable scale
-        self.bias = torch.nn.Parameter(torch.zeros(1))  # Learnable shift
+        self.alpha = nn.Parameter(torch.ones(1))  # Learnable scale
+        self.bias = nn.Parameter(torch.zeros(1))  # Learnable shift
     
     def forward(self, x):
         # Calculate mean and std across the last dimension

@@ -45,6 +45,7 @@ div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) /
 - This matches the scaling in the original formula.
 
 #### Layer Normalization
+![layer_normalization](resources/layer_normalization.png)
 #### Feed Forward
 #### Multi-Head Attention
 #### Residual Connection

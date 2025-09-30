@@ -52,6 +52,25 @@ class PositionalEncoding(torch.nn.Module):
         x = x + (self.pe[:, :x.shape[1], :]).requires_grad_(False)
         return self.dropout(x)
 
+class LayerNormalization(torch.nn.Module):
+    """
+    Normalizes inputs across features for stable training.
+    Uses learnable parameters alpha (scale) and bias (shift).
+    """
+    def __init__(self, eps: float = 1e-6) -> None:
+        super().__init__()
+        self.eps = eps  # Small value to avoid division by zero
+        self.alpha = torch.nn.Parameter(torch.ones(1))  # Learnable scale
+        self.bias = torch.nn.Parameter(torch.zeros(1))  # Learnable shift
+    
+    def forward(self, x):
+        # Calculate mean and std across the last dimension
+        mean = x.mean(dim=-1, keepdim=True)
+        std = x.std(dim=-1, keepdim=True)
+        
+        # Normalize: (x - mean) / std, then scale and shift
+        return self.alpha * (x - mean) / (std + self.eps) + self.bias
+
 
 if __name__ == "__main__":
     # Reproducible results for the test run
@@ -89,3 +108,13 @@ if __name__ == "__main__":
     print("After PositionalEncoding shape:", out_pe.shape)
     print("First pos-encoded vector (first 5 dims):", out_pe[0, 0, :5].tolist())
 
+    # Layer Normalization test
+    ln = LayerNormalization(eps=1e-6)
+    out_ln = ln(out_pe)
+    print("After LayerNormalization shape:", out_ln.shape)
+    # Print mean/std across features for first batch, first token (should be near 0/1)
+    first_mean = out_ln.mean(dim=-1)[0, 0].item()
+    first_std = out_ln.std(dim=-1)[0, 0].item()
+    print("LayerNorm mean (first batch, first token):", first_mean)
+    print("LayerNorm std  (first batch, first token):", first_std)
+    print("LayerNorm alpha:", ln.alpha.item(), "bias:", ln.bias.item())

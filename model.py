@@ -90,6 +90,87 @@ class FeedForwardBlock(nn.Module):
         return self.linear_2(self.dropout(torch.relu(self.linear_1(x))))
 
 
+class MultiHeadAttentionBlock(nn.Module):
+    """
+    Multi-Head Attention mechanism.
+    Splits attention across multiple heads to capture different relationships.
+    Query:  "The cat sat on the mat"
+    Key:    "The cat sat on the mat"
+    Value:  "The cat sat on the mat"
+
+    Attention weights show which words attend to which:
+        The  cat  sat  on   the  mat
+    The   [0.9, 0.0, 0.0, 0.0, 0.1, 0.0]
+    cat   [0.2, 0.6, 0.1, 0.0, 0.0, 0.1]
+    sat   [0.0, 0.3, 0.5, 0.2, 0.0, 0.0]
+    ...
+    """
+    def __init__(self, d_model: int, h: int, dropout: float) -> None:
+        super().__init__()
+        self.d_model = d_model
+        self.h = h  # Number of heads
+        
+        # Ensure d_model is divisible by number of heads
+        assert d_model % h == 0, 'd_model must be divisible by h'
+        
+        self.d_k = d_model // h  # Dimension per head
+        
+        # Weight matrices for Q, K, V, and output
+        self.w_q = nn.Linear(d_model, d_model)  # Query weights
+        self.w_k = nn.Linear(d_model, d_model)  # Key weights
+        self.w_v = nn.Linear(d_model, d_model)  # Value weights
+        self.w_o = nn.Linear(d_model, d_model)  # Output weights
+        
+        self.dropout = nn.Dropout(dropout)
+    
+    @staticmethod
+    def attention(query, key, value, mask, dropout: nn.Dropout):
+        """
+        Scaled Dot-Product Attention.
+        Formula: Attention(Q,K,V) = softmax(QK^T / sqrt(d_k))V
+        """
+        d_k = query.shape[-1]
+        # Calculate attention scores: QK^T / sqrt(d_k)
+        attention_scores = (query @ key.transpose(-2, -1)) / math.sqrt(d_k)
+        # Apply mask (if provided) to prevent attention to certain positions
+        if mask is not None:
+            attention_scores.masked_fill_(mask == 0, -1e9)
+        # Apply softmax to get attention weights
+        attention_scores = attention_scores.softmax(dim=-1)
+        # Apply dropout
+        if dropout is not None:
+            attention_scores = dropout(attention_scores)
+        # Multiply by values and return
+        return (attention_scores @ value), attention_scores
+    
+    def forward(self, q, k, v, mask):
+        # Linear transformations
+        query = self.w_q(q)  # (batch, seq_len, d_model)
+        key = self.w_k(k)
+        value = self.w_v(v)
+        
+        # Split into multiple heads
+        # (batch, seq_len, d_model) → (batch, seq_len, h, d_k) 
+        #                           → (batch, h, seq_len, d_k)
+        query = query.view(query.shape[0], query.shape[1], self.h, self.d_k).transpose(1, 2)
+        key = key.view(key.shape[0], key.shape[1], self.h, self.d_k).transpose(1, 2)
+        value = value.view(value.shape[0], value.shape[1], self.h, self.d_k).transpose(1, 2)
+        
+        # Calculate attention
+        x, self.attention_scores = MultiHeadAttentionBlock.attention(
+            query, key, value, mask, self.dropout
+        )
+        
+        # Concatenate heads
+        # (batch, h, seq_len, d_k) → (batch, seq_len, h, d_k) 
+        #                          → (batch, seq_len, d_model)
+        x = x.transpose(1, 2).contiguous().view(x.shape[0], -1, self.h * self.d_k)
+        
+        # Final linear transformation
+        return self.w_o(x)
+
+
+
 if __name__ == "__main__":
     # Reproducible results for the test run
     torch.manual_seed(0)
@@ -144,3 +225,14 @@ if __name__ == "__main__":
     print("First FF vector (first 5 dims):", out_ff[0, 0, :5].tolist())
     print("FeedForward mean:", out_ff.mean().item())
     print("FeedForward std:", out_ff.std().item())
+
+    # MultiHeadAttention test
+    mha = MultiHeadAttentionBlock(d_model=d_model, h=4, dropout=0.1)
+    out_mha = mha(out_ln, out_ln, out_ln, mask=None)
+    print("After MultiHeadAttention shape:", out_mha.shape)
+    print("First MHA vector (first 5 dims):", out_mha[0, 0, :5].tolist())
+    if hasattr(mha, 'attention_scores') and mha.attention_scores is not None:
+        print("Attention scores shape:", mha.attention_scores.shape)
+        print("Attention scores sample (batch 0, head 0, query 0, first 5 keys):", mha.attention_scores[0, 0, 0, :5].tolist())
+    else:
+        print("No attention scores available")

@@ -170,6 +170,21 @@ class MultiHeadAttentionBlock(nn.Module):
         return self.w_o(x)
 
 
+class ResidualConnection(nn.Module):
+    """
+    Implements residual connection: LayerNorm(x + Sublayer(x))
+    Helps with gradient flow in deep networks.
+    """
+    def __init__(self, dropout: float) -> None:
+        super().__init__()
+        self.dropout = nn.Dropout(dropout)
+        self.norm = LayerNormalization()
+    
+    def forward(self, x, sublayer):
+        # Normalize first, then add to original input
+        return x + self.dropout(sublayer(self.norm(x)))
+
+
 
 if __name__ == "__main__":
     # Reproducible results for the test run
@@ -236,3 +251,15 @@ if __name__ == "__main__":
         print("Attention scores sample (batch 0, head 0, query 0, first 5 keys):", mha.attention_scores[0, 0, 0, :5].tolist())
     else:
         print("No attention scores available")
+
+    # ResidualConnection tests
+    residual = ResidualConnection(dropout=0.1)
+    out_res_ff = residual(out_ln, lambda y: ff(y))
+    print("After ResidualConnection around FF shape:", out_res_ff.shape)
+    print("Residual-FF first 5 dims:", out_res_ff[0, 0, :5].tolist())
+
+    out_res_mha = residual(out_ln, lambda y: mha(y, y, y, mask=None))
+    print("After ResidualConnection around MHA shape:", out_res_mha.shape)
+    print("Residual-MHA first 5 dims:", out_res_mha[0, 0, :5].tolist())
+    if hasattr(mha, 'attention_scores') and mha.attention_scores is not None:
+        print("Residual MHA attention shape:", mha.attention_scores.shape)

@@ -51,6 +51,7 @@ div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) /
 #### Multi-Head Attention
 ![multihead_attention](resources/multihead_attention.png)
 #### Residual Connection
+![residual_connection](resources/residual_connection.png)
 #### Encoder
 #### Decoder
 #### Linear Layer

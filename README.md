@@ -53,6 +53,7 @@ div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) /
 #### Residual Connection
 ![residual_connection](resources/residual_connection.png)
 #### Encoder
+![encoder](resources/encoder.png)
 #### Decoder
 #### Linear Layer
 #### Transformer

@@ -185,6 +185,61 @@ class ResidualConnection(nn.Module):
         return x + self.dropout(sublayer(self.norm(x)))
 
 
+class EncoderBlock(nn.Module):
+    """
+    Single encoder block consisting of:
+    1. Multi-head self-attention
+    2. Feed-forward network
+    Both with residual connections.
+    """
+    def __init__(
+        self, 
+        self_attention_block: MultiHeadAttentionBlock,
+        feed_forward_block: FeedForwardBlock,
+        dropout: float
+    ) -> None:
+        super().__init__()
+        self.self_attention_block = self_attention_block
+        self.feed_forward_block = feed_forward_block
+        self.residual_connections = nn.ModuleList([
+            ResidualConnection(dropout) for _ in range(2)
+        ])
+    
+    def forward(self, x, src_mask):
+        # Self-attention with residual connection
+        x = self.residual_connections[0](
+            x, 
+            lambda x: self.self_attention_block(x, x, x, src_mask)
+        )
+        """
+        Inside the residual connecttion, the lambda expands to: self.self_attention_block(self.norm(x), self.norm(x), self.norm(x), src_mask)
+        def forward(self, x, sublayer):
+            return x + self.dropout(sublayer(self.norm(x)))
+        """
+
+        # Feed-forward with residual connection
+        x = self.residual_connections[1](x, self.feed_forward_block)
+        
+        return x
+
+
+class Encoder(nn.Module):
+    """
+    Complete encoder: stack of N encoder blocks.
+    """
+    def __init__(self, layers: nn.ModuleList) -> None:
+        super().__init__()
+        self.layers = layers
+        self.norm = LayerNormalization()
+    
+    def forward(self, x, mask):
+        # Pass through all encoder blocks
+        for layer in self.layers:
+            x = layer(x, mask)
+        
+        # Final normalization
+        return self.norm(x)
+
 
 if __name__ == "__main__":
     # Reproducible results for the test run
@@ -263,3 +318,26 @@ if __name__ == "__main__":
     print("Residual-MHA first 5 dims:", out_res_mha[0, 0, :5].tolist())
     if hasattr(mha, 'attention_scores') and mha.attention_scores is not None:
         print("Residual MHA attention shape:", mha.attention_scores.shape)
+
+    # EncoderBlock test
+    enc_block = EncoderBlock(
+        self_attention_block=MultiHeadAttentionBlock(d_model=d_model, h=4, dropout=0.1),
+        feed_forward_block=FeedForwardBlock(d_model=d_model, d_ff=64, dropout=0.1),
+        dropout=0.1,
+    )
+    out_enc_block = enc_block(out_ln, src_mask=None)
+    print("After EncoderBlock shape:", out_enc_block.shape)
+    print("EncoderBlock first 5 dims:", out_enc_block[0, 0, :5].tolist())
+
+    # Encoder (stack of 2 encoder blocks) test
+    layers = nn.ModuleList([
+        EncoderBlock(
+            self_attention_block=MultiHeadAttentionBlock(d_model=d_model, h=4, dropout=0.1),
+            feed_forward_block=FeedForwardBlock(d_model=d_model, d_ff=64, dropout=0.1),
+            dropout=0.1,
+        ) for _ in range(2)
+    ])
+    encoder = Encoder(layers)
+    out_encoder = encoder(out_ln, mask=None)
+    print("After Encoder (2 layers) shape:", out_encoder.shape)
+    print("Encoder first 5 dims:", out_encoder[0, 0, :5].tolist())

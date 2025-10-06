@@ -241,6 +241,66 @@ class Encoder(nn.Module):
         return self.norm(x)
 
 
+class DecoderBlock(nn.Module):
+    """
+    Single decoder block consisting of:
+    1. Masked multi-head self-attention
+    2. Multi-head cross-attention (attends to encoder output)
+    3. Feed-forward network
+    All with residual connections.
+    """
+    def __init__(
+        self,
+        self_attention_block: MultiHeadAttentionBlock,
+        cross_attention_block: MultiHeadAttentionBlock,
+        feed_forward_block: FeedForwardBlock,
+        dropout: float
+    ) -> None:
+        super().__init__()
+        self.self_attention_block = self_attention_block
+        self.cross_attention_block = cross_attention_block
+        self.feed_forward_block = feed_forward_block
+        self.residual_connections = nn.ModuleList([
+            ResidualConnection(dropout) for _ in range(3)
+        ])
+    
+    def forward(self, x, encoder_output, src_mask, tgt_mask):
+        # Masked self-attention
+        x = self.residual_connections[0](
+            x,
+            lambda x: self.self_attention_block(x, x, x, tgt_mask)
+        )
+        
+        # Cross-attention (queries from decoder, keys/values from encoder)
+        x = self.residual_connections[1](
+            x,
+            lambda x: self.cross_attention_block(x, encoder_output, encoder_output, src_mask)
+        )
+        
+        # Feed-forward
+        x = self.residual_connections[2](x, self.feed_forward_block)
+        
+        return x
+    
+
+class Decoder(nn.Module):
+    """
+    Complete decoder: stack of N decoder blocks.
+    """
+    def __init__(self, layers: nn.ModuleList) -> None:
+        super().__init__()
+        self.layers = layers
+        self.norm = LayerNormalization()
+    
+    def forward(self, x, encoder_output, src_mask, tgt_mask):
+        # Pass through all decoder blocks
+        for layer in self.layers:
+            x = layer(x, encoder_output, src_mask, tgt_mask)
+        
+        # Final normalization
+        return self.norm(x)
+    
+
 if __name__ == "__main__":
     # Reproducible results for the test run
     torch.manual_seed(0)
@@ -341,3 +401,36 @@ if __name__ == "__main__":
     out_encoder = encoder(out_ln, mask=None)
     print("After Encoder (2 layers) shape:", out_encoder.shape)
     print("Encoder first 5 dims:", out_encoder[0, 0, :5].tolist())
+
+    # DecoderBlock test
+    # Use embeddings as decoder inputs for the test
+    tgt = out.clone()
+    # Causal mask to prevent attending to future positions
+    tgt_mask = torch.tril(torch.ones(seq_len, seq_len, dtype=torch.bool))
+
+    dec_block = DecoderBlock(
+        self_attention_block=MultiHeadAttentionBlock(d_model=d_model, h=4, dropout=0.1),
+        cross_attention_block=MultiHeadAttentionBlock(d_model=d_model, h=4, dropout=0.1),
+        feed_forward_block=FeedForwardBlock(d_model=d_model, d_ff=64, dropout=0.1),
+        dropout=0.1,
+    )
+    out_dec_block = dec_block(tgt, encoder_output=out_encoder, src_mask=None, tgt_mask=tgt_mask)
+    print("After DecoderBlock shape:", out_dec_block.shape)
+    print("DecoderBlock first 5 dims:", out_dec_block[0, 0, :5].tolist())
+    if hasattr(dec_block.cross_attention_block, 'attention_scores') and dec_block.cross_attention_block.attention_scores is not None:
+        print("Decoder cross-attention scores shape:", dec_block.cross_attention_block.attention_scores.shape)
+        print("Decoder cross-attention sample (batch 0, head 0, query 0, first 5 keys):", dec_block.cross_attention_block.attention_scores[0, 0, 0, :5].tolist())
+
+    # Decoder (stack of 2 decoder blocks) test
+    dec_layers = nn.ModuleList([
+        DecoderBlock(
+            self_attention_block=MultiHeadAttentionBlock(d_model=d_model, h=4, dropout=0.1),
+            cross_attention_block=MultiHeadAttentionBlock(d_model=d_model, h=4, dropout=0.1),
+            feed_forward_block=FeedForwardBlock(d_model=d_model, d_ff=64, dropout=0.1),
+            dropout=0.1,
+        ) for _ in range(2)
+    ])
+    decoder = Decoder(dec_layers)
+    out_decoder = decoder(tgt, encoder_output=out_encoder, src_mask=None, tgt_mask=tgt_mask)
+    print("After Decoder (2 layers) shape:", out_decoder.shape)
+    print("Decoder first 5 dims:", out_decoder[0, 0, :5].tolist())

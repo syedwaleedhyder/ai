@@ -55,6 +55,7 @@ div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) /
 #### Encoder
 ![encoder](resources/encoder.png)
 #### Decoder
+![decoder](resources/decoder.png)
 #### Linear Layer
 #### Transformer
 #### Task overview

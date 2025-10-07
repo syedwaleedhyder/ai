@@ -301,6 +301,19 @@ class Decoder(nn.Module):
         return self.norm(x)
     
 
+class ProjectionLayer(nn.Module):
+    """
+    Projects decoder output to vocabulary size and applies log softmax.
+    """
+    def __init__(self, d_model: int, vocab_size: int) -> None:
+        super().__init__()
+        self.proj = nn.Linear(d_model, vocab_size)
+    
+    def forward(self, x):
+        # (batch, seq_len, d_model) → (batch, seq_len, vocab_size)
+        return torch.log_softmax(self.proj(x), dim=-1)
+
+
 if __name__ == "__main__":
     # Reproducible results for the test run
     torch.manual_seed(0)
@@ -434,3 +447,15 @@ if __name__ == "__main__":
     out_decoder = decoder(tgt, encoder_output=out_encoder, src_mask=None, tgt_mask=tgt_mask)
     print("After Decoder (2 layers) shape:", out_decoder.shape)
     print("Decoder first 5 dims:", out_decoder[0, 0, :5].tolist())
+
+    # ProjectionLayer test
+    projection = ProjectionLayer(d_model=d_model, vocab_size=vocab_size)
+    out_proj = projection(out_decoder)  # log-probabilities over vocab
+    print("After ProjectionLayer (log probs) shape:", out_proj.shape)
+    # Check that probabilities sum to ~1 across vocab for a few positions
+    prob_sums = torch.exp(out_proj).sum(dim=-1)  # (batch, seq_len)
+    print("Sum of probabilities (should be 1) for first batch:", prob_sums[0].tolist())
+    # Show top-3 tokens for first batch, first token
+    topk_vals, topk_idx = torch.topk(out_proj[0, 0], k=3)
+    print("Top-3 token indices (first batch, first token):", topk_idx.tolist())
+    print("Top-3 log-probs:", topk_vals.tolist())

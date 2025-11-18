@@ -76,6 +76,7 @@ Dataset: https://huggingface.co/datasets/Helsinki-NLP/opus_books
 #### Tokenizer
 See file tokenizer.py
 #### Dataset
+See file dataset.py and train.py
 #### Training loop
 #### Validation loop
 #### Attention visualization

@@ -71,7 +71,10 @@ Converts decoder output to vocabulary probabilities.
 <img src="resources/transformer_architecture.png" alt="transformer_architecture" height="400" />
 
 #### Task overview
+Dataset: https://huggingface.co/datasets/Helsinki-NLP/opus_books
+
 #### Tokenizer
+See file tokenizer.py
 #### Dataset
 #### Training loop
 #### Validation loop

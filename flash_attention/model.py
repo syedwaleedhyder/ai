@@ -313,6 +313,112 @@ class ProjectionLayer(nn.Module):
         # (batch, seq_len, d_model) → (batch, seq_len, vocab_size)
         return torch.log_softmax(self.proj(x), dim=-1)
 
+class Transformer(nn.Module):
+    """
+    Complete Transformer model with encoder and decoder.
+    """
+    def __init__(
+        self,
+        encoder: Encoder,
+        decoder: Decoder,
+        source_embeddings: InputEmbeddings,
+        target_embeddings: InputEmbeddings,
+        positional_encoding: PositionalEncoding,
+        projection_layer: ProjectionLayer
+    ) -> None:
+        super().__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+        self.source_embeddings = source_embeddings
+        self.target_embeddings = target_embeddings
+        self.positional_encoding = positional_encoding
+        self.projection_layer = projection_layer
+
+    def encode(self, src, src_mask):
+        # Embed and encode source sequence
+        src_embedded = self.positional_encoding(self.source_embeddings(src))
+        return self.encoder(src_embedded, src_mask)
+
+    def decode(self, encoder_output, src_mask, tgt, tgt_mask):
+        # Embed and decode target sequence
+        tgt_embedded = self.positional_encoding(self.target_embeddings(tgt))
+        return self.decoder(tgt_embedded, encoder_output, src_mask, tgt_mask)
+    
+    def project(self, decoder_output):
+        # Project to vocabulary size
+        return self.projection_layer(decoder_output)
+    
+    def forward(self, src, tgt, src_mask, tgt_mask):
+        # Full forward pass through encoder, decoder, and projection
+        encoder_output = self.encode(src, src_mask)
+        decoder_output = self.decode(encoder_output, src_mask, tgt, tgt_mask)
+        return self.project(decoder_output)
+    
+
+def build_transformer(
+    src_vocab_size: int,
+    tgt_vocab_size: int,
+    src_seq_len: int,
+    tgt_seq_len: int,
+    d_model: int = 512,
+    N: int = 6,
+    h: int = 8,
+    dropout: float = 0.1,
+    d_ff: int = 2048
+) -> Transformer:
+    """
+    Helper function to build a complete Transformer model.
+    """
+    # Create source and target embedding layers
+    source_embeddings = InputEmbeddings(d_model, src_vocab_size)
+    target_embeddings = InputEmbeddings(d_model, tgt_vocab_size)
+
+    # Create positional encoding layers
+    src_positional_encoding = PositionalEncoding(d_model, src_seq_len, dropout)
+    tgt_positional_encoding = PositionalEncoding(d_model, tgt_seq_len, dropout)
+
+    # Create encoder blocks
+    encoder_layers = nn.ModuleList([
+        EncoderBlock(
+            self_attention_block=MultiHeadAttentionBlock(d_model, h, dropout),
+            feed_forward_block=FeedForwardBlock(d_model, d_ff, dropout),
+            dropout=dropout
+        ) for _ in range(N)
+    ])
+    encoder = Encoder(encoder_layers)
+    
+    # Create decoder blocks
+    decoder_layers = nn.ModuleList([
+        DecoderBlock(
+            self_attention_block=MultiHeadAttentionBlock(d_model, h, dropout),
+            cross_attention_block=MultiHeadAttentionBlock(d_model, h, dropout),
+            feed_forward_block=FeedForwardBlock(d_model, d_ff, dropout),
+            dropout=dropout
+        ) for _ in range(N)
+    ])
+    decoder = Decoder(decoder_layers)
+    
+    # Create projection layer
+    projection_layer = ProjectionLayer(d_model, vocab_size)
+    
+    # Build the complete Transformer model
+    transformer = Transformer(
+        encoder=encoder,
+        decoder=decoder,
+        source_embeddings=source_embeddings,
+        target_embeddings=target_embeddings,
+        src_positional_encoding=src_positional_encoding,
+        tgt_positional_encoding=tgt_positional_encoding,
+        projection_layer=projection_layer
+    )
+
+    # Initialize weights (optional, can use default initialization)
+    for p in transformer.parameters():
+        if p.dim() > 1:
+            nn.init.xavier_uniform_(p)
+
+
+    return transformer
 
 if __name__ == "__main__":
     # Reproducible results for the test run
@@ -459,3 +565,36 @@ if __name__ == "__main__":
     topk_vals, topk_idx = torch.topk(out_proj[0, 0], k=3)
     print("Top-3 token indices (first batch, first token):", topk_idx.tolist())
     print("Top-3 log-probs:", topk_vals.tolist())
+
+    # Complete Transformer test
+    transformer = build_transformer(
+        src_vocab_size=vocab_size,
+        tgt_vocab_size=vocab_size,
+        src_seq_len=seq_len,
+        tgt_seq_len=seq_len,
+    )
+    out_transformer = transformer.encode(x, src_mask=None)
+    print("After Transformer encode shape:", out_transformer.shape)
+    out_transformer_dec = transformer.decode(
+        encoder_output=out_transformer,
+        src_mask=None,
+        tgt=x,
+        tgt_mask=tgt_mask
+    )
+    print("After Transformer decode shape:", out_transformer_dec.shape)
+    out_transformer_proj = transformer.project(out_transformer_dec)
+    print("After Transformer project (log probs) shape:", out_transformer_proj.shape)
+    prob_sums_trans = torch.exp(out_transformer_proj).sum(dim=-1)  # (batch, seq_len)
+    print("Sum of probabilities (should be 1) for first batch (Transformer):", prob_sums_trans[0].tolist())
+    topk_vals_trans, topk_idx_trans = torch.topk(out_transformer_proj[0, 0], k=3)
+    print("Top-3 token indices (first batch, first token) Transformer:", topk_idx_trans.tolist())
+    print("Top-3 log-probs (Transformer):", topk_vals_trans.tolist())
+    # Full forward pass
+    out_transformer_full = transformer(x, x, src_mask=None, tgt_mask=tgt_mask)
+    print("After Transformer full forward (log probs) shape:", out_transformer_full.shape)
+    prob_sums_full = torch.exp(out_transformer_full).sum(dim=-1)  # (batch, seq_len)
+    print("Sum of probabilities (should be 1) for first batch (Transformer full):", prob_sums_full[0].tolist())
+    topk_vals_full, topk_idx_full = torch.topk(out_transformer_full[0, 0], k=3)
+    print("Top-3 token indices (first batch, first token) Transformer full:", topk_idx_full.tolist())
+    print("Top-3 log-probs (Transformer full):", topk_vals_full.tolist())
+

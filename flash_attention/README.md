@@ -59,6 +59,7 @@ div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) /
 #### Linear Layer
 Converts decoder output to vocabulary probabilities.
 #### Transformer
+![transformer_architecture](resources/transformer_architecture.png)
 #### Task overview
 #### Tokenizer
 #### Dataset

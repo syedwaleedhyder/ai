@@ -24,12 +24,14 @@ This repo documents my step-by-step journey of learning and implementing **Flash
 Source: [Coding a Transformer from scratch on PyTorch, with full explanation, training and inference.](https://www.youtube.com/watch?v=ISNdQcPhsts)
 
 #### Introduction
-![transformer_architecture](resources/transformer_architecture.png)
+<img src="resources/transformer_architecture.png" alt="transformer_architecture" height="400" />
+
 #### Input Embeddings
-![input embeddings](resources/input_embedding.png)
+<img src="resources/input_embedding.png" alt="input embeddings" height="400" />
+
 #### Positional Encodings
-![positional_encoding](resources/positional_encoding.png)
-![positional_encoding_2](resources/positional_encoding_2.png)
+<img src="resources/positional_encoding.png" alt="positional_encoding" height="400" />
+<img src="resources/positional_encoding_2.png" alt="positional_encoding_2" height="400" />
 
 #### Log Transform in Positional Encoding
 
@@ -45,21 +47,29 @@ div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(10000.0) /
 - This matches the scaling in the original formula.
 
 #### Layer Normalization
-![layer_normalization](resources/layer_normalization.png)
+<img src="resources/layer_normalization.png" alt="layer_normalization" height="400" />
+
 #### Feed Forward
-![feed_forward](resources/feed_forward.png)
+<img src="resources/feed_forward.png" alt="feed_forward" height="400" />
+
 #### Multi-Head Attention
-![multihead_attention](resources/multihead_attention.png)
+<img src="resources/multihead_attention.png" alt="multihead_attention" height="400" />
+
 #### Residual Connection
-![residual_connection](resources/residual_connection.png)
+<img src="resources/residual_connection.png" alt="residual_connection" height="400" />
+
 #### Encoder
-![encoder](resources/encoder.png)
+<img src="resources/encoder.png" alt="encoder" height="400" />
+
 #### Decoder
-![decoder](resources/decoder.png)
+<img src="resources/decoder.png" alt="decoder" height="400" />
+
 #### Linear Layer
 Converts decoder output to vocabulary probabilities.
 #### Transformer
-![transformer_architecture](resources/transformer_architecture.png)
+<!-- ![transformer_architecture](resources/transformer_architecture.png) -->
+<img src="resources/transformer_architecture.png" alt="transformer_architecture" height="400" />
+
 #### Task overview
 #### Tokenizer
 #### Dataset

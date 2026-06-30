@@ -10,7 +10,7 @@ p.setGravity(0, 0, -9.8)
 
 # 1. Load Environment
 p.loadURDF("plane.urdf")
-sawyerId = p.loadURDF("./sawyer_robot/sawyer_description/urdf/sawyer.urdf", [0, 0, 0.9], useFixedBase=1)
+sawyerId = p.loadURDF("../sawyer_robot/sawyer_description/urdf/sawyer.urdf", [0, 0, 0.9], useFixedBase=1)
 tableId = p.loadURDF("table/table.urdf", [0.8, 0, 0.0], useFixedBase=1, globalScaling=0.8)
 cubeId = p.loadURDF("cube.urdf", [0.65, 0, 0.9], globalScaling=0.08) # Drop it slightly high so it settles
 
@@ -67,7 +67,7 @@ def control_hand(close_amount):
         hand_indices, 
         p.POSITION_CONTROL, 
         targetPositions=[close_amount] * len(hand_indices),
-        forces=[500] * len(hand_indices) # Force to hold the cube
+        forces=[5000] * len(hand_indices) # Force to hold the cube
     )
 
 # --- MAIN LOOP (The Brain) ---

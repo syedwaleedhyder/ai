@@ -1,34 +1,39 @@
 import os
 import argparse
 from dotenv import load_dotenv
-from google import genai
-from google.genai import types
+from openai import OpenAI
 
 
 load_dotenv()
-api_key = os.environ.get("GEMINI_API_KEY")
+api_key = os.environ.get("OPENROUTER_API_KEY")
+if api_key is None:
+    raise RuntimeError(
+        "OPENROUTER_API_KEY not found. Please set it in your .env file."
+    )
 
-client = genai.Client(api_key=api_key)
-
-
+client = OpenAI(
+    base_url="https://openrouter.ai/api/v1",
+    api_key=api_key,
+)
 
 
 def main():
     print("Hello from ai-coding-agent!")
-    messages: list[types.Content] = [
-        types.Content(role="user", parts=[types.Part(text=args.user_prompt)])
+    messages = [
+        {
+            "role": "user",
+            "content": args.user_prompt,
+        }
     ]
     if args.verbose:
         print("User prompt:", args.user_prompt)
 
-    response = client.models.generate_content(model="gemini-2.5-flash", contents=messages)
-    print(response.text)
-    usage_metadata = response.usage_metadata
-    prompt_token_count = usage_metadata.prompt_token_count
-    candidates_token_count = usage_metadata.candidates_token_count
-    if args.verbose:
-        print(f"Prompt tokens: {prompt_token_count}")
-        print(f"Response tokens: {candidates_token_count}")
+    response = client.chat.completions.create(model="openrouter/free", messages=messages)
+    print(response.choices[0].message.content)
+    usage = response.usage
+    if args.verbose and usage is not None:
+        print(f"Prompt tokens: {usage.prompt_tokens}")
+        print(f"Response tokens: {usage.completion_tokens}")
 
 
 if __name__ == "__main__":

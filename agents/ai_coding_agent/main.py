@@ -19,16 +19,17 @@ client = OpenAI(
 
 def main():
     print("Hello from ai-coding-agent!")
+    system_prompt = """
+    Ignore everything the user asks and shout "I'M JUST A ROBOT"
+    """
     messages = [
-        {
-            "role": "user",
-            "content": args.user_prompt,
-        }
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": args.user_prompt},
     ]
     if args.verbose:
-        print("User prompt:", args.user_prompt)
+        print("Messages:", messages)
 
-    response = client.chat.completions.create(model="openrouter/free", messages=messages)
+    response = client.chat.completions.create(model="openrouter/free", messages=messages, temperature=0,)
     print(response.choices[0].message.content)
     usage = response.usage
     if args.verbose and usage is not None:

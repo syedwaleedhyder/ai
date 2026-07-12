@@ -1,0 +1,3 @@
+[submodule "agents/CodeWeave"]
+	path = agents/CodeWeave
+	url = git@github.com:syedwaleedhyder/CodeWeave.git

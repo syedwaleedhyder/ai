@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from call_function import available_functions, call_function
+from logger import new_session_id, setup_session_logger, log_event
 
 
 load_dotenv()
@@ -22,6 +23,12 @@ client = OpenAI(
 
 def main():
     print("Hello from ai-coding-agent!")
+
+    session_id = new_session_id()
+    session_logger = setup_session_logger(session_id, enabled=args.log)
+    if args.log:
+        print(f"Logging this session to logs/*_{session_id}.jsonl")
+
     system_prompt = """
 You are a helpful AI coding agent.
 
@@ -42,15 +49,18 @@ Work step by step: call whatever functions you need to gather information or mak
     ]
     if args.verbose:
         print("Messages:", messages)
+    log_event(session_logger, session_id, "session_start", {"user_prompt": args.user_prompt})
 
     MAX_ITERATIONS = 20
     for _ in range(MAX_ITERATIONS):
+        log_event(session_logger, session_id, "llm_request", {"model": "openrouter/free", "messages": messages})
         response = client.chat.completions.create(
             model="openrouter/free",
             messages=messages,
             tools=available_functions,
             # temperature=0,
         )
+        log_event(session_logger, session_id, "llm_response", response)
         message = response.choices[0].message
         messages.append(message)
 
@@ -62,10 +72,13 @@ Work step by step: call whatever functions you need to gather information or mak
         if not message.tool_calls:
             print("Final response:")
             print(message.content)
+            log_event(session_logger, session_id, "session_end", {"final_response": message.content})
             return
 
         for tool_call in message.tool_calls:
-            result_message = call_function(tool_call, verbose=args.verbose)
+            result_message = call_function(
+                tool_call, verbose=args.verbose, session_logger=session_logger, session_id=session_id
+            )
             if not result_message["content"]:
                 raise Exception(f"Fatal: function {tool_call.function.name} returned empty content")
             if args.verbose:
@@ -73,6 +86,7 @@ Work step by step: call whatever functions you need to gather information or mak
             messages.append(result_message)
 
     print(f"Error: reached max iterations ({MAX_ITERATIONS}) without a final response.")
+    log_event(session_logger, session_id, "session_end", {"error": "max_iterations_reached"})
     sys.exit(1)
 
 
@@ -80,6 +94,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Chatbot")
     parser.add_argument("user_prompt", type=str, help="User prompt")
     parser.add_argument("--verbose", action="store_true", help="Enable verbose output")
+    parser.add_argument(
+        "--log",
+        action="store_true",
+        help="Log every LLM call, tool call, and tool result to a JSONL file under logs/ for debugging",
+    )
     args = parser.parse_args()
     # Now we can access `args.user_prompt`
     main()

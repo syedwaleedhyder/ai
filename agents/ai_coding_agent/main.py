@@ -1,10 +1,9 @@
 import os
-import json
 import argparse
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from call_function import available_functions
+from call_function import available_functions, call_function
 
 
 load_dotenv()
@@ -45,13 +44,16 @@ All paths you provide should be relative to the working directory. You do not ne
         model="openrouter/free",
         messages=messages,
         tools=available_functions,
-        temperature=0,
+        # temperature=0,
     )
     message = response.choices[0].message
     if message.tool_calls:
         for tool_call in message.tool_calls:
-            function_args = json.loads(tool_call.function.arguments or "{}")
-            print(f"Calling function: {tool_call.function.name}({function_args})")
+            result_message = call_function(tool_call, verbose=args.verbose)
+            if not result_message["content"]:
+                raise Exception(f"Fatal: function {tool_call.function.name} returned empty content")
+            if args.verbose:
+                print(f"-> {result_message['content']}")
     else:
         print(message.content)
 

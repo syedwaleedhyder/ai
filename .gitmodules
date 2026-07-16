@@ -1,3 +1,6 @@
 [submodule "agents/CodeWeave"]
 	path = agents/CodeWeave
 	url = git@github.com:syedwaleedhyder/CodeWeave.git
+[submodule "agents/WordleAI"]
+	path = agents/WordleAI
+	url = git@github.com:syedwaleedhyder/WordleAI.git
